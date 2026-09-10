@@ -1,7 +1,6 @@
 """
-Minimal dashboard: shows total active playtime today.
-Reads from the database on a timer — does not touch processes,
-windows, or SQL directly (that's the tracking and repository layers).
+Main dashboard window. Runs tracking on a background thread and
+shows total active playtime today, reading from the database.
 """
 
 import sys
@@ -11,6 +10,7 @@ from PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QW
 
 from app.database.connection import get_connection
 from app.database.repositories import get_active_seconds_today
+from app.tracking.tracker_thread import TrackerThread
 
 REFRESH_INTERVAL_MS = 5000
 
@@ -39,6 +39,9 @@ class MainWindow(QMainWindow):
         container.setLayout(layout)
         self.setCentralWidget(container)
 
+        self.tracker_thread = TrackerThread()
+        self.tracker_thread.start()
+
         self.refresh()
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh)
@@ -49,6 +52,11 @@ class MainWindow(QMainWindow):
         seconds = get_active_seconds_today(conn)
         conn.close()
         self.label.setText(format_duration(seconds))
+
+    def closeEvent(self, event):
+        self.tracker_thread.stop()
+        self.tracker_thread.wait()
+        event.accept()
 
 
 def main():
