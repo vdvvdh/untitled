@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.database.connection import get_connection
+from app.database.migrations import run_migrations
 from app.database.repositories import (
     get_active_seconds_for_range,
     get_playtime_by_game,
@@ -83,6 +84,11 @@ class MainWindow(QMainWindow):
         container = QWidget()
         container.setLayout(layout)
         self.setCentralWidget(container)
+
+        # Ensure the database and tables exist before anything queries them.
+        setup_conn = get_connection()
+        run_migrations(setup_conn)
+        setup_conn.close()
 
         self.tracker_thread = TrackerThread()
         self.tracker_thread.start()
